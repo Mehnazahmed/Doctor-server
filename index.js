@@ -61,7 +61,7 @@ async function run() {
       console.log(date);
       const query = {};
       const options = await appointmentOptionsCollection.find(query).toArray();
-
+      //booking  query depending on conditions
       const bookingQuery = { appointmentDate: date };
       const alreadyBooked = await bookingsCollection
         .find(bookingQuery)
@@ -78,6 +78,12 @@ async function run() {
       });
 
       res.send(options);
+    });
+     //get a specific attribute from an existing collection using project
+    app.get('/doctorsspecialty',async(req,res)=>{
+      const query={}
+      const result = await appointmentOptionsCollection.find(query).project({name:1}).toArray();
+      res.send(result)
     });
 
     app.get("/bookings", verifyJWT, async (req, res) => {
@@ -149,7 +155,7 @@ async function run() {
       const user = await usersCollection.findOne(query);
       res.send({isAdmin: user?.role ==='admin'});
 
-    })
+    });
 
     //add admin role to user
     app.put('/users/admin/:id',verifyJWT,async(req,res)=>{
