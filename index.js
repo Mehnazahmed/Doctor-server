@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const mg = require('nodemailer-mailgun-transport');
 
 const port = process.env.PORT || 5000;
 require("dotenv").config();
@@ -50,6 +52,53 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+function sendBookingEmail(booking){
+  const {email,treatment,appointmentDate,slot}=booking;
+  //transporter using mailgun
+  const auth = {
+    auth: {
+      api_key: process.env.EMAIL_SEND_KEY,
+      domain: process.env.EMAIL_SEND_DOMAIN
+    }
+  }
+  
+  const transporter = nodemailer.createTransport(mg(auth));
+
+
+
+//   //transporter using sendgrid
+//   let transporter = nodemailer.createTransport({
+//     host: 'smtp.sendgrid.net',
+//     port: 587,
+//     auth: {
+//         user: "apikey",
+//         pass: process.env.SENDGRID_API_KEY
+//     }
+//  });
+ //nodemailer code
+ console.log('sending:',email)
+ transporter.sendMail({
+  from: 'mehnazchowdhury613@gmail.com', // verified sender email//official mail
+  to: email || 'mehnazchowdhury613@gmail.com' ,// recipient email
+  subject: `your appointment for ${treatment} is confirmed`, // Subject line
+  text: "Hello world!", // plain text body
+  html: `<h3>Your appointment is confirmed</h3>
+  <div>
+     <p>Your appointment for treatment ${treatment}</p>
+     <p>Please visit us on ${appointmentDate} at ${slot}</p>
+     <p>Thanks from Daoctors portal</p>
+  </div>
+  `, // html body
+}, function(error, info){
+  if (error) {
+    console.log('email error',error);
+  } else {
+    console.log('Email sent: ' + info.response);
+  }
+});
+
+}
 
 async function run() {
   try {
@@ -136,6 +185,10 @@ async function run() {
         return res.send({ acknowledged: false, message });
       }
       const result = await bookingsCollection.insertOne(booking);
+      //send email
+
+      sendBookingEmail(booking)
+
       res.send(result);
     });
 
@@ -256,6 +309,7 @@ async function run() {
     app.post('/payments',async(req,res)=>{
       const payment =req.body;
       const result = await paymentsCollection.insertOne(payment);
+      //update info in bookings collection
       const id=payment.bookingId;
       const filter ={_id: new ObjectId(id)}
       const updateDoc={
@@ -267,7 +321,7 @@ async function run() {
       }
       const updatedResult = await bookingsCollection.updateOne(filter,updateDoc)
       res.send(result);
-    })
+    });
 
     //Temporary to update price field on appointment options
     // app.get('/addprice', async(req,res)=>{
